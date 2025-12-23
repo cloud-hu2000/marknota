@@ -1,36 +1,177 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 共享白板 (Shared Whiteboard)
 
-## Getting Started
+一个功能完整的网页版共享白板，支持多用户实时协作。
 
-First, run the development server:
+## 功能特性
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **实时协作**: 多用户在同一个白板上实时看到彼此的操作
+- **图片上传**: 支持本地 JPG/PNG 图片上传
+- **图片编辑**: 支持缩放、旋转、裁剪、移动、删除操作
+- **房间管理**: 唯一房间ID，支持分享链接
+- **WebSocket同步**: 所有操作实时广播给房间内其他用户
+
+## 技术栈
+
+- **前端**: React + TypeScript + Vite
+- **后端**: Node.js + Express + Socket.IO
+- **渲染**: HTML5 Canvas + DOM 元素
+- **通信**: WebSocket (Socket.IO)
+
+## 项目结构
+
+```
+shared-whiteboard/
+├── client/              # React 前端应用
+│   ├── src/
+│   │   ├── components/  # 白板、工具栏等组件
+│   │   ├── hooks/       # WebSocket、图片编辑钩子
+│   │   ├── types/       # TypeScript 类型定义
+│   │   └── utils/       # 工具函数
+├── server/              # Node.js WebSocket 服务
+│   ├── index.js
+│   └── rooms.js         # 房间状态管理
+└── package.json
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 快速开始
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+### 安装依赖
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm install
+cd client && npm install
+cd ../server && npm install
+```
 
-## Learn More
+### 启动开发服务器
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+# 同时启动前端和后端
+npm run dev
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# 或者分别启动
+npm run dev:client  # 前端开发服务器 (http://localhost:3002)
+npm run dev:server  # 后端WebSocket服务器 (http://localhost:3004)
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 测试应用
 
-## Deploy on Vercel
+```bash
+# 运行完整测试
+npm run test
+# 或
+node test-app.js
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 一键演示
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+# 自动启动完整演示环境
+npm run demo
+```
+
+### 构建生产版本
+
+```bash
+npm run build
+```
+
+## 使用说明
+
+1. 打开浏览器访问前端应用
+2. 系统会自动创建一个唯一的房间ID
+3. 点击"复制分享链接"分享给其他用户
+4. 所有用户可以在同一个白板上实时协作
+5. 使用左侧工具栏上传图片并进行编辑
+
+## 核心功能
+
+### 图片操作
+- **上传**: 点击"上传图片"按钮选择本地图片
+- **移动**: 直接拖拽图片到任意位置
+- **缩放**: 拖拽角点或使用快捷键调整大小
+- **旋转**: 拖拽旋转手柄调整角度
+- **裁剪**: 进入裁剪模式，选择区域后确认
+- **删除**: 选中图片后按Delete键或点击删除按钮
+
+### 实时同步
+- 所有图片操作都会实时同步到房间内的其他用户
+- 使用操作日志机制保证数据一致性
+
+## 部署
+
+### 前端部署
+前端可以部署到 Vercel、Netlify 等静态站点托管服务。
+
+```bash
+# 构建生产版本
+npm run build
+
+# dist/ 目录下的文件可以直接部署到静态站点托管服务
+```
+
+### 后端部署
+后端可以部署到 Render、Railway、Heroku 等 Node.js 托管服务。
+
+```bash
+# 启动生产服务器
+npm start
+```
+
+### 环境变量
+根据部署环境调整以下配置：
+
+- 后端服务器端口: `process.env.PORT` (默认为 3004)
+- 前端 WebSocket 地址: 在生产环境中需要配置正确的后端地址
+
+### 示例部署流程
+
+1. **Railway (推荐)**
+   - 连接 GitHub 仓库
+   - Railway 会自动检测并部署
+
+2. **Vercel + Railway**
+   - Vercel 部署前端: `npm run build` 输出到 `dist/`
+   - Railway 部署后端: 设置环境变量 `NODE_ENV=production`
+
+## 开发说明
+
+### MVP 范围
+- ✅ 单房间多用户实时同步
+- ✅ 图片上传和基本编辑（移动、缩放、旋转）
+- ✅ 无用户认证（匿名加入）
+- ✅ 内存状态存储
+
+## 🐛 已修复的Bug
+
+### v1.0.1 - 图片选择修复
+- ✅ 修复图片上传后无法选中编辑的问题
+- ✅ 区分点击选择和拖拽移动操作
+- ✅ 优化事件处理逻辑
+
+### v1.0.2 - 图片缩放修复
+- ✅ 修复图片右下角控制点无法缩放的问题
+- ✅ 修正 canvasRef 引用传递问题
+- ✅ 优化缩放计算逻辑，确保正确坐标计算
+
+### v1.0.3 - 图片拖拽修复
+- ✅ 修复点击一次图片就跟随鼠标移动的问题
+- ✅ 添加拖拽阈值检测（5像素），区分点击和拖拽
+- ✅ 优化鼠标事件处理顺序，避免事件冲突
+
+### v1.0.4 - 选择边框优化
+- ✅ 将选择边框改为完全贴合图片边缘
+- ✅ 使用 box-shadow 替代 border，避免占据额外空间
+- ✅ 调整控制点位置，保持在边框外部
+
+### v1.0.5 - 缩放控制点优化
+- ✅ 缩放控制点现在贴合图片右下角
+- ✅ 无论图片尺寸如何变化，控制点都保持贴合位置
+- ✅ 优化视觉效果，一半在图片内一半在图片外
+
+### 后续迭代
+- 🔄 图片裁剪功能完善
+- 🔄 用户头像和光标位置同步
+- 🔄 历史记录和撤销重做
+- 🔄 持久化存储
+- 🔄 文字工具、画笔等其他功能
