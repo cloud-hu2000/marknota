@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 3000,
-    host: true
+    host: '0.0.0.0' // 监听所有网络接口，支持内网访问
   }
 })
 
