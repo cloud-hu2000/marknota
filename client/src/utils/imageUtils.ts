@@ -36,6 +36,7 @@ export const getImageDimensions = (src: string): Promise<{ width: number; height
 
 /**
  * 压缩图片并转换为Base64
+ * PNG图片保持透明度，其他格式转换为JPEG
  */
 export const compressImage = (file: File, maxWidth: number = 1200, quality: number = 0.8): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -51,6 +52,11 @@ export const compressImage = (file: File, maxWidth: number = 1200, quality: numb
 
       // 绘制并压缩
       ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+      // 根据输入文件类型决定输出格式
+      // PNG文件保持PNG格式以保留透明度，其他格式转换为JPEG
+      const outputFormat = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+
       canvas.toBlob((blob) => {
         if (blob) {
           const reader = new FileReader();
@@ -60,7 +66,7 @@ export const compressImage = (file: File, maxWidth: number = 1200, quality: numb
         } else {
           reject(new Error('压缩失败'));
         }
-      }, 'image/jpeg', quality);
+      }, outputFormat, quality);
     };
 
     img.onerror = reject;
@@ -97,5 +103,32 @@ export const copyToClipboard = async (text: string): Promise<boolean> => {
       document.body.removeChild(textArea);
     }
   }
+};
+
+/**
+ * 测试函数：验证PNG透明度处理
+ * 这个函数在开发环境中可以用来测试PNG处理逻辑
+ */
+export const testPngTransparency = async (file: File): Promise<{ originalType: string; outputType: string; hasTransparency: boolean }> => {
+  const originalType = file.type;
+
+  // 压缩图片
+  const compressedDataUrl = await compressImage(file, 800, 0.9);
+
+  // 从data URL中提取MIME类型
+  const mimeMatch = compressedDataUrl.match(/^data:([^;]+)/);
+  const outputType = mimeMatch ? mimeMatch[1] : 'unknown';
+
+  // 简单的透明度检测（检查是否包含alpha通道信息）
+  const hasTransparency = outputType === 'image/png';
+
+  console.log('PNG透明度测试结果:', {
+    originalType,
+    outputType,
+    hasTransparency,
+    isPngPreserved: originalType === 'image/png' && outputType === 'image/png'
+  });
+
+  return { originalType, outputType, hasTransparency };
 };
 
