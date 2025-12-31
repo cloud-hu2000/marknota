@@ -6,6 +6,7 @@ class RoomManager {
   constructor() {
     this.rooms = new Map(); // roomId -> roomData
     this.dataDir = path.join(__dirname, 'data');
+    this.saveTimeouts = new Map(); // roomId -> timeoutId 用于节流保存操作
     this.ensureDataDirectory();
     this.loadAllRooms();
   }
@@ -46,6 +47,22 @@ class RoomManager {
     }
   }
 
+  // 节流保存房间数据
+  scheduleSave(roomId, roomData) {
+    // 清除之前的定时器
+    if (this.saveTimeouts.has(roomId)) {
+      clearTimeout(this.saveTimeouts.get(roomId));
+    }
+
+    // 设置新的定时器，延迟500ms后保存
+    const timeoutId = setTimeout(async () => {
+      this.saveTimeouts.delete(roomId);
+      await this.saveRoom(roomId, roomData);
+    }, 500);
+
+    this.saveTimeouts.set(roomId, timeoutId);
+  }
+
   // 保存房间数据到文件
   async saveRoom(roomId, roomData) {
     try {
@@ -57,10 +74,27 @@ class RoomManager {
         operations: roomData.operations.slice(-100), // 只保存最近100个操作
         lastUpdate: roomData.lastUpdate
       };
+
       // 使用临时文件避免并发写入问题
       const tempFilePath = `${filePath}.tmp`;
-      await fs.writeFile(tempFilePath, JSON.stringify(dataToSave, null, 2));
-      await fs.rename(tempFilePath, filePath);
+      const jsonData = JSON.stringify(dataToSave, null, 2);
+
+      try {
+        // 先写入临时文件
+        await fs.writeFile(tempFilePath, jsonData);
+        // 尝试重命名临时文件
+        await fs.rename(tempFilePath, filePath);
+      } catch (renameError) {
+        // 如果重命名失败（临时文件不存在），直接写入正式文件
+        console.warn(`Failed to rename temp file for room ${roomId}, writing directly:`, renameError.message);
+        await fs.writeFile(filePath, jsonData);
+        // 清理可能存在的临时文件
+        try {
+          await fs.unlink(tempFilePath);
+        } catch (cleanupError) {
+          // 忽略清理错误
+        }
+      }
     } catch (error) {
       console.error(`Error saving room ${roomId}:`, error);
     }
@@ -138,10 +172,8 @@ class RoomManager {
     const room = await this.getRoom(roomId);
     room.state = { ...state };
     room.lastUpdate = Date.now();
-    // 异步保存到文件，不阻塞操作
-    this.saveRoom(roomId, room).catch(error =>
-      console.error(`Failed to save room ${roomId}:`, error)
-    );
+    // 节流保存：延迟500ms后再保存，避免过于频繁的IO操作
+    this.scheduleSave(roomId, room);
     return room;
   }
 
@@ -156,10 +188,8 @@ class RoomManager {
     }
 
     room.lastUpdate = Date.now();
-    // 异步保存到文件，不阻塞操作
-    this.saveRoom(roomId, room).catch(error =>
-      console.error(`Failed to save room ${roomId}:`, error)
-    );
+    // 节流保存：延迟500ms后再保存，避免过于频繁的IO操作
+    this.scheduleSave(roomId, room);
     return room;
   }
 
@@ -202,6 +232,15 @@ class RoomManager {
     });
 
     return toDelete.length;
+  }
+
+  // 清理所有待处理的保存操作（用于服务器关闭时）
+  cleanupPendingSaves() {
+    for (const [roomId, timeoutId] of this.saveTimeouts) {
+      clearTimeout(timeoutId);
+      console.log(`Cleared pending save for room ${roomId}`);
+    }
+    this.saveTimeouts.clear();
   }
 }
 

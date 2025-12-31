@@ -252,6 +252,27 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`内网访问地址: http://${getLocalIP()}:${PORT}`);
 });
 
+// 优雅关闭处理
+process.on('SIGINT', () => {
+  console.log('正在关闭服务器...');
+  // 清理待处理的保存操作
+  roomManager.cleanupPendingSaves();
+  server.close(() => {
+    console.log('服务器已关闭');
+    process.exit(0);
+  });
+});
+
+process.on('SIGTERM', () => {
+  console.log('正在关闭服务器...');
+  // 清理待处理的保存操作
+  roomManager.cleanupPendingSaves();
+  server.close(() => {
+    console.log('服务器已关闭');
+    process.exit(0);
+  });
+});
+
 // 获取本地IP地址
 function getLocalIP() {
   const { networkInterfaces } = require('os');
