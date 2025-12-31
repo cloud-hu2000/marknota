@@ -1,0 +1,78 @@
+# MarkNota 部署指南
+
+## 架构说明
+
+MarkNota 是一个包含前后端的协作白板应用：
+- **前端**: React + Vite 应用
+- **后端**: Node.js + WebSocket 服务器
+
+由于 Vercel 不支持长时间运行的 WebSocket 服务器，我们需要分别部署前后端。
+
+## 部署步骤
+
+### 1. 部署后端服务器 (推荐使用 Render)
+
+1. 注册 [Render](https://render.com) 账户
+2. 创建新 Web Service
+3. 连接你的 GitHub 仓库
+4. 配置构建设置：
+   - **Root Directory**: `server`
+   - **Build Command**: `npm install`
+   - **Start Command**: `npm start`
+5. 部署完成后，复制服务器 URL（类似 `https://your-app.onrender.com`）
+
+### 2. 配置前端环境变量
+
+在 Vercel 控制台中设置环境变量：
+```
+VITE_SERVER_URL=https://your-server.onrender.com
+```
+
+### 3. 部署前端到 Vercel
+
+```bash
+# 进入客户端目录
+cd client
+
+# 安装 Vercel CLI (如果还没有安装)
+npm install -g vercel
+
+# 部署到 Vercel
+vercel --prod
+
+# 或者通过 Vercel 网页界面部署
+```
+
+### 4. 更新服务器配置（可选）
+
+如果你的服务器运行在不同端口，你可以在 `client/src/config.ts` 中修改默认配置。
+
+## 环境变量说明
+
+### 前端环境变量 (Vercel)
+- `VITE_SERVER_URL`: 后端服务器的完整 URL
+
+### 后端环境变量 (Render/Heroku)
+- `PORT`: 服务器端口（自动设置）
+
+## 故障排除
+
+### 连接问题
+1. 确保后端服务器正在运行
+2. 检查防火墙设置允许 WebSocket 连接
+3. 验证环境变量配置正确
+
+### 构建问题
+1. 确保所有依赖都在 package.json 中列出
+2. 检查 Node.js 版本兼容性
+
+## 本地开发
+
+```bash
+# 同时启动前后端
+npm run dev
+
+# 或者分别启动
+npm run dev:client  # 前端开发服务器 (http://localhost:3000)
+npm run dev:server  # 后端服务器 (http://localhost:3004)
+```
