@@ -67,11 +67,22 @@ class RoomManager {
   async saveRoom(roomId, roomData) {
     try {
       const filePath = this.getRoomFilePath(roomId);
+
+      // 确保至少保留最近的删除操作，避免删除被"恢复"
+      let operationsToSave = roomData.operations.slice(-200); // 增加到200个操作
+
+      // 如果操作太多，优先保留删除操作
+      if (operationsToSave.length > 100) {
+        const deleteOperations = operationsToSave.filter(op => op.type === 'delete');
+        const otherOperations = operationsToSave.filter(op => op.type !== 'delete').slice(-50); // 保留50个非删除操作
+        operationsToSave = [...otherOperations, ...deleteOperations].slice(-100); // 总共保留100个，优先保留删除操作
+      }
+
       // 只保存状态和操作，不保存客户端连接信息
       const dataToSave = {
         roomId: roomData.roomId,
         state: roomData.state,
-        operations: roomData.operations.slice(-100), // 只保存最近100个操作
+        operations: operationsToSave,
         lastUpdate: roomData.lastUpdate
       };
 
@@ -127,6 +138,8 @@ class RoomManager {
       // 先尝试从文件加载
       const savedData = await this.loadRoom(roomId);
       if (savedData) {
+        // 从保存的操作历史重建当前状态
+        savedData.state = this.rebuildStateFromOperations(savedData.operations);
         savedData.clients = forceReload ? new Set() : (this.rooms.get(roomId)?.clients || new Set()); // 保留客户端连接
         this.rooms.set(roomId, savedData);
       } else {
@@ -177,10 +190,67 @@ class RoomManager {
     return room;
   }
 
+  // 将操作应用到状态
+  applyOperationToState(state, operation) {
+    switch (operation.type) {
+      case 'add':
+        if (operation.data) {
+          // 检查元素是否已存在，避免重复添加
+          const existingIndex = state.elements.findIndex(el => el.id === operation.elementId);
+          if (existingIndex === -1) {
+            state.elements.push(operation.data);
+          }
+        }
+        break;
+      case 'update':
+        const updateIndex = state.elements.findIndex(el => el.id === operation.elementId);
+        if (updateIndex >= 0 && operation.data) {
+          state.elements[updateIndex] = { ...state.elements[updateIndex], ...operation.data };
+        }
+        break;
+      case 'delete':
+        state.elements = state.elements.filter(el => el.id !== operation.elementId);
+        // 如果删除的是选中的元素，清空选择
+        if (state.selectedElementId === operation.elementId) {
+          state.selectedElementId = null;
+        }
+        break;
+    }
+    return state;
+  }
+
+  // 重新计算房间状态（从操作历史重建）
+  rebuildStateFromOperations(operations) {
+    const state = {
+      elements: [],
+      selectedElementId: null
+    };
+
+    // 按时间顺序应用所有操作
+    const sortedOperations = operations.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+
+    for (const operation of sortedOperations) {
+      this.applyOperationToState(state, operation);
+    }
+
+    return state;
+  }
+
+  // 获取重建后的房间状态
+  getRebuiltRoomState(roomId) {
+    const room = this.rooms.get(roomId);
+    if (!room) return null;
+
+    return this.rebuildStateFromOperations(room.operations);
+  }
+
   // 添加操作到房间
   async addOperation(roomId, operation) {
     const room = await this.getRoom(roomId);
     room.operations.push(operation);
+
+    // 立即应用操作到当前状态
+    this.applyOperationToState(room.state, operation);
 
     // 限制操作历史长度，避免内存泄漏
     if (room.operations.length > 1000) {
@@ -188,8 +258,21 @@ class RoomManager {
     }
 
     room.lastUpdate = Date.now();
-    // 节流保存：延迟500ms后再保存，避免过于频繁的IO操作
-    this.scheduleSave(roomId, room);
+
+    // 对于删除操作，立即保存以确保持久化
+    if (operation.type === 'delete') {
+      // 清除之前的定时保存，立即执行
+      if (this.saveTimeouts.has(roomId)) {
+        clearTimeout(this.saveTimeouts.get(roomId));
+        this.saveTimeouts.delete(roomId);
+      }
+      await this.saveRoom(roomId, room);
+      console.log(`Delete operation persisted immediately for room ${roomId}, element ${operation.elementId}`);
+    } else {
+      // 其他操作使用节流保存
+      this.scheduleSave(roomId, room);
+    }
+
     return room;
   }
 

@@ -129,8 +129,8 @@ io.on('connection', (socket) => {
       socket.currentRoom = roomId;
       await roomManager.addClient(roomId, socket.id);
 
-      // 总是从最新文件重新加载房间状态，确保状态是最新的
-      const room = await roomManager.getRoom(roomId, true); // 强制从文件重新加载
+      // 获取房间状态，优先使用内存中的状态，只有在房间不存在时才从文件加载
+      const room = await roomManager.getRoom(roomId); // 不强制重新加载，使用内存状态
       console.log(`发送房间状态给客户端 ${socket.id}: ${room.state.elements.length} 个元素, 房间ID: ${roomId}`);
       console.log('房间状态详情:', JSON.stringify(room.state, null, 2).substring(0, 200) + '...');
       socket.emit('room-state', room);
