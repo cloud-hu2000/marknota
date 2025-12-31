@@ -118,7 +118,11 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ roomId, initialState }) 
   // 发送实时操作到服务器（仅用于持久化，不广播）
   const sendRealtimeOperation = useCallback(async (operation: Operation) => {
     try {
-      const response = await fetch(`http://localhost:3004/api/rooms/${roomId}/realtime-update`, {
+      // 动态构建API URL，使用当前页面的主机但替换端口为3004
+      const currentHost = window.location.hostname;
+      const apiUrl = `http://${currentHost}:3004/api/rooms/${roomId}/realtime-update`;
+
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

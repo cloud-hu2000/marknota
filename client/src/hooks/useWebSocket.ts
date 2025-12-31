@@ -20,8 +20,16 @@ export const useWebSocket = ({ roomId, onStateUpdate, onOperation }: UseWebSocke
   }, [onStateUpdate, onOperation]);
 
   useEffect(() => {
+    // 动态获取WebSocket服务器地址
+    // 如果是从localhost访问，则连接localhost:3004
+    // 如果是从内网IP访问，则连接相应的IP:3004
+    const currentHost = window.location.hostname;
+    const wsUrl = `http://${currentHost}:3004`;
+
+    console.log(`连接到WebSocket服务器: ${wsUrl}`);
+
     // 连接到WebSocket服务器
-    const socket = io('http://localhost:3004', {
+    const socket = io(wsUrl, {
       transports: ['websocket', 'polling'],
       forceNew: true,
       timeout: 20000,

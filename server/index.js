@@ -8,7 +8,35 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: "http://localhost:3000", // 前端开发服务器地址
+    origin: function (origin, callback) {
+      // 允许来自localhost、127.0.0.1、内网IP的请求
+      const allowedOrigins = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        /^http:\/\/192\.168\.\d+\.\d+:3000$/, // 内网IP模式
+        /^http:\/\/10\.\d+\.\d+\.\d+:3000$/,   // 内网IP模式
+        /^http:\/\/172\.\d+\.\d+\.\d+:3000$/,  // 内网IP模式
+      ];
+
+      // 如果没有origin（比如移动端），允许
+      if (!origin) return callback(null, true);
+
+      // 检查是否匹配允许的origin
+      const isAllowed = allowedOrigins.some(allowedOrigin => {
+        if (typeof allowedOrigin === 'string') {
+          return allowedOrigin === origin;
+        } else {
+          return allowedOrigin.test(origin);
+        }
+      });
+
+      if (isAllowed) {
+        callback(null, true);
+      } else {
+        console.log(`Blocked CORS origin: ${origin}`);
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     methods: ["GET", "POST"]
   },
   transports: ['websocket', 'polling'],
@@ -217,8 +245,25 @@ setInterval(() => {
 
 // 启动服务器
 const PORT = process.env.PORT || 3004;
-server.listen(PORT, () => {
-  console.log(`服务器运行在端口 ${PORT}`);
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`服务器运行在端口 ${PORT} (监听所有网络接口)`);
   console.log(`WebSocket 服务器已启动`);
   console.log(`前端开发服务器应运行在 http://localhost:3000`);
+  console.log(`内网访问地址: http://${getLocalIP()}:${PORT}`);
 });
+
+// 获取本地IP地址
+function getLocalIP() {
+  const { networkInterfaces } = require('os');
+  const nets = networkInterfaces();
+
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name]) {
+      // 跳过内部和非IPv4地址
+      if (net.family === 'IPv4' && !net.internal) {
+        return net.address;
+      }
+    }
+  }
+  return 'localhost';
+}
