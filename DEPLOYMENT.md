@@ -13,10 +13,11 @@ MarkNota 是一个包含前后端的协作白板应用：
 ### 1. 部署后端服务器 (推荐使用 Render)
 
 1. 注册 [Render](https://render.com) 账户
-2. 创建新 Web Service
-3. 连接你的 GitHub 仓库
+2. 创建新 **Web Service**
+3. 连接你的 GitHub 仓库 (`cloud-hu2000/marknota`)
 4. 配置构建设置：
-   - **Root Directory**: `server`
+   - **Runtime**: `Node`
+   - **Root Directory**: `server` (重要！)
    - **Build Command**: `npm install`
    - **Start Command**: `npm start`
 5. 部署完成后，复制服务器 URL（类似 `https://your-app.onrender.com`）
