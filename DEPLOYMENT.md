@@ -71,6 +71,10 @@ vercel --prod
 - 构建脚本会自动设置必要的执行权限
 - 如果仍有问题，确保你的代码是最新的（包含 `fix-permissions.cjs` 文件）
 
+**如果遇到 vercel.json schema 验证错误**:
+- 确保使用最新的代码版本（已修复 schema 验证问题）
+- 错误如 "functions should NOT have fewer than 1 properties" 已解决
+
 **如果遇到 TypeScript 编译错误**:
 - 确保使用最新的代码版本（已修复所有类型错误）
 - 常见错误包括：
