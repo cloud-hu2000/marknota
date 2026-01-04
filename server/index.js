@@ -19,9 +19,11 @@ const io = socketIo(server, {
         // 生产环境域名
         "https://marknota.onrender.com",
         "https://marknota.vercel.app",
+        "https://www.marknota.com",
         // 允许所有以这些域名开头的请求（包括子域名）
         /^https:\/\/.*\.marknota\.onrender\.com$/,
         /^https:\/\/.*\.marknota\.vercel\.app$/,
+        /^https:\/\/.*\.marknota\.com$/,
       ];
 
       // 如果没有origin（比如移动端），允许
