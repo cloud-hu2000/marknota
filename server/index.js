@@ -9,13 +9,19 @@ const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
     origin: function (origin, callback) {
-      // 允许来自localhost、127.0.0.1、内网IP的请求
+      // 允许来自localhost、127.0.0.1、内网IP和生产环境的请求
       const allowedOrigins = [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         /^http:\/\/192\.168\.\d+\.\d+:3000$/, // 内网IP模式
         /^http:\/\/10\.\d+\.\d+\.\d+:3000$/,   // 内网IP模式
         /^http:\/\/172\.\d+\.\d+\.\d+:3000$/,  // 内网IP模式
+        // 生产环境域名
+        "https://marknota.onrender.com",
+        "https://marknota.vercel.app",
+        // 允许所有以这些域名开头的请求（包括子域名）
+        /^https:\/\/.*\.marknota\.onrender\.com$/,
+        /^https:\/\/.*\.marknota\.vercel\.app$/,
       ];
 
       // 如果没有origin（比如移动端），允许
