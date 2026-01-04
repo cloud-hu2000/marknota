@@ -45,7 +45,7 @@ const io = socketIo(server, {
     },
     methods: ["GET", "POST"]
   },
-  transports: ['websocket', 'polling'],
+  transports: ['polling', 'websocket'], // 优先使用轮询，WebSocket 作为备用
   maxHttpBufferSize: 10 * 1024 * 1024, // 10MB，增加消息大小限制
   pingTimeout: 60000, // 60秒ping超时
   pingInterval: 25000, // 25秒ping间隔
@@ -119,7 +119,7 @@ app.post('/api/rooms/:roomId/realtime-update', async (req, res) => {
 
 // WebSocket 连接处理
 io.on('connection', (socket) => {
-  console.log(`New client connected: ${socket.id}`);
+  console.log(`New client connected: ${socket.id}, transport: ${socket.conn.transport.name}, origin: ${socket.handshake.headers.origin || 'unknown'}`);
 
   // 客户端加入房间
   socket.on('join-room', async (roomId) => {
@@ -256,6 +256,12 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`WebSocket 服务器已启动`);
   console.log(`前端开发服务器应运行在 http://localhost:3000`);
   console.log(`内网访问地址: http://${getLocalIP()}:${PORT}`);
+  console.log(`生产环境支持轮询和 WebSocket 传输`);
+});
+
+// 添加连接错误处理
+io.engine.on('connection_error', (err) => {
+  console.log('Socket.IO connection error:', err);
 });
 
 // 优雅关闭处理
