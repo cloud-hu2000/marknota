@@ -6,6 +6,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onUploadImage,
   onDeleteElement,
   onCropStart
+  , onZoomIn, onZoomOut, onResetZoom, zoomLevel
 }) => {
   return (
     <div className="toolbar">
@@ -14,6 +15,12 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         <button onClick={onUploadImage} className="upload-btn">
           📤 上传图片
         </button>
+        <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
+          <button onClick={onZoomOut} className="action-btn">➖</button>
+          <button onClick={onResetZoom} className="action-btn">100%</button>
+          <button onClick={onZoomIn} className="action-btn">➕</button>
+          <div style={{ marginLeft: 'auto', fontSize: 12, color: '#666' }}>{zoomLevel ? `${Math.round(zoomLevel*100)}%` : ''}</div>
+        </div>
       </div>
 
       {selectedElement && (

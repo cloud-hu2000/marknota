@@ -42,6 +42,10 @@ export interface ToolbarProps {
   onUploadImage: () => void;
   onDeleteElement: () => void;
   onCropStart: () => void;
+  onZoomIn?: () => void;
+  onZoomOut?: () => void;
+  onResetZoom?: () => void;
+  zoomLevel?: number;
 }
 
 export interface WhiteboardProps {
@@ -59,4 +63,5 @@ export interface ImageEditorProps {
   onCropStart: () => void;
   onSelect: () => void;
   canvasRef: React.RefObject<HTMLDivElement>;
+  canvasScale?: number;
 }

@@ -6,6 +6,8 @@ import { ImageElement as ImageElementComponent } from './ImageElement';
 import { compressImage, isValidImageFile, generateId, getImageDimensions } from '../utils/imageUtils';
 
 export const Whiteboard: React.FC<WhiteboardProps> = ({ roomId, initialState }) => {
+  // 画布缩放比例，用于放大 / 缩小查看
+  const [canvasScale, setCanvasScale] = React.useState<number>(1);
   const [state, setState] = useState<WhiteboardState>(initialState || {
     elements: [],
     selectedElementId: null
@@ -166,13 +168,35 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ roomId, initialState }) 
       const index = elements.findIndex(el => el.id === elementId);
 
       if (index >= 0) {
-        elements[index] = { ...elements[index], ...updates };
+        const merged = { ...elements[index], ...updates };
+        // 边界限制：位置/尺寸以百分比存储，确保在 0..100 内且不会溢出
+        const minPercentWidth = Math.max( (25 / (canvasRef.current?.getBoundingClientRect().width || window.innerWidth)) * 100, 0.1);
+        const minPercentHeight = Math.max( (25 / (canvasRef.current?.getBoundingClientRect().height || window.innerHeight)) * 100, 0.1);
+
+        const width = Math.max(merged.size.width, minPercentWidth);
+        const height = Math.max(merged.size.height, minPercentHeight);
+        const x = Math.min(Math.max(merged.position.x, 0), Math.max(0, 100 - width));
+        const y = Math.min(Math.max(merged.position.y, 0), Math.max(0, 100 - height));
+
+        elements[index] = { ...merged, position: { x, y }, size: { width, height } };
         newState.elements = elements;
       }
 
       return newState;
     });
   }, []);
+
+  // 当 canvasScale 改变时，把数值写到 DOM dataset，供编辑钩子读取以进行坐标换算
+  React.useEffect(() => {
+    if (canvasRef.current) {
+      (canvasRef.current as HTMLElement).dataset.scale = String(canvasScale);
+    }
+  }, [canvasScale]);
+
+  // 缩放控制
+  const zoomIn = useCallback(() => setCanvasScale(s => Math.min(3, +(s + 0.1).toFixed(2))), []);
+  const zoomOut = useCallback(() => setCanvasScale(s => Math.max(0.25, +(s - 0.1).toFixed(2))), []);
+  const resetZoom = useCallback(() => setCanvasScale(1), []);
 
   // 实时更新元素到服务器（拖拽过程中调用，用于持久化）
   const updateElementRealtime = useCallback(async (elementId: string, updates: Partial<ImageElement>) => {
@@ -211,12 +235,24 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ roomId, initialState }) 
     // 合并传入的更新数据和当前元素状态，确保发送完整且最新的状态
     const finalElementState = { ...currentElement, ...updates };
 
+    // 边界限制同样在最终更新前执行一次
+    const rect = canvasRef.current?.getBoundingClientRect();
+    const canvasWidth = rect ? rect.width : window.innerWidth;
+    const canvasHeight = rect ? rect.height : window.innerHeight;
+    const minPercentWidth = Math.max((25 / canvasWidth) * 100, 0.1);
+    const minPercentHeight = Math.max((25 / canvasHeight) * 100, 0.1);
+
+    const width = Math.max(finalElementState.size.width, minPercentWidth);
+    const height = Math.max(finalElementState.size.height, minPercentHeight);
+    const x = Math.min(Math.max(finalElementState.position.x, 0), Math.max(0, 100 - width));
+    const y = Math.min(Math.max(finalElementState.position.y, 0), Math.max(0, 100 - height));
+
     broadcastOperation({
       type: 'update',
       elementId,
       data: {
-        position: finalElementState.position,
-        size: finalElementState.size,
+        position: { x, y },
+        size: { width, height },
         rotation: finalElementState.rotation
       },
       timestamp: Date.now()
@@ -276,18 +312,37 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ roomId, initialState }) 
 
       // 获取压缩后图片的尺寸
       const { width: naturalW, height: naturalH } = await getImageDimensions(base64Src);
-      const maxWidth = Math.min(window.innerWidth * 0.6, 1200); // 限制默认显示宽度
+      // 计算默认像素显示尺寸（基于窗口大小）
+      const maxWidth = Math.min(window.innerWidth * 0.6, 1200);
       const maxHeight = Math.min(window.innerHeight * 0.6, 800);
       const scale = Math.min(1, maxWidth / naturalW, maxHeight / naturalH);
       const displayW = Math.round(naturalW * scale);
       const displayH = Math.round(naturalH * scale);
 
+      // 将像素尺寸/位置转换为百分比（相对于画布未缩放的尺寸）
+      const rect = canvasRef.current?.getBoundingClientRect();
+      const currentScaleAttr = (canvasRef.current as HTMLElement)?.dataset?.scale;
+      const currentScale = currentScaleAttr ? (parseFloat(currentScaleAttr) || 1) : 1;
+      const canvasWidth = rect ? rect.width / currentScale : window.innerWidth;
+      const canvasHeight = rect ? rect.height / currentScale : window.innerHeight;
+
       // 创建新元素，尺寸基于图片实际比例，避免 container 与图片内容不匹配
+      // 默认放在画布内 5% 位置，避免超出边界
+      const defaultPercentX = 5;
+      const defaultPercentY = 5;
+
+      // 确保尺寸不会超过画布（保留少量边距）
+      const maxPercentW = 90;
+      const maxPercentH = 90;
+      const sizePercentW = Math.min((displayW / canvasWidth) * 100, maxPercentW);
+      const sizePercentH = Math.min((displayH / canvasHeight) * 100, maxPercentH);
+
       const newElement: ImageElement = {
         id: generateId(),
         src: base64Src,
-        position: { x: 100, y: 100 }, // 默认位置
-        size: { width: displayW, height: displayH },
+        // 存储为百分比，便于响应式适配（相对于画布未缩放尺寸）
+        position: { x: defaultPercentX, y: defaultPercentY },
+        size: { width: sizePercentW, height: sizePercentH },
         rotation: 0,
         zIndex: Date.now(),
         createdAt: Date.now()
@@ -349,6 +404,10 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ roomId, initialState }) 
           onUploadImage={handleUploadImage}
           onDeleteElement={deleteElement}
           onCropStart={handleCropStart}
+          onZoomIn={zoomIn}
+          onZoomOut={zoomOut}
+          onResetZoom={resetZoom}
+          zoomLevel={canvasScale}
         />
 
         {/* 白板画布 */}
@@ -356,6 +415,10 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ roomId, initialState }) 
           ref={canvasRef}
           className="whiteboard-canvas"
           onClick={handleCanvasClick}
+          style={{
+            transform: `scale(${canvasScale})`,
+            transformOrigin: '0 0'
+          }}
         >
           {/* 网格背景 */}
           <div className="grid-background" />
@@ -373,6 +436,7 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ roomId, initialState }) 
               onCropStart={handleCropStart}
               onSelect={() => selectElement(element.id)}
               canvasRef={canvasRef}
+              canvasScale={canvasScale}
             />
           ))}
 

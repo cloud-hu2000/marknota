@@ -67,10 +67,10 @@ export const ImageElement: React.FC<ImageEditorProps> = ({
       className={`image-element ${isSelected ? 'selected' : ''} ${isDragging ? 'dragging' : ''}`}
       style={{
         position: 'absolute',
-        left: element.position.x,
-        top: element.position.y,
-        width: element.size.width,
-        height: element.size.height,
+        left: `${element.position.x}%`,
+        top: `${element.position.y}%`,
+        width: `${element.size.width}%`,
+        height: `${element.size.height}%`,
         transform: `rotate(${element.rotation}deg)`,
         zIndex: element.zIndex,
         cursor: isDragging ? 'grabbing' : 'grab'
@@ -103,8 +103,8 @@ export const ImageElement: React.FC<ImageEditorProps> = ({
             className="control-point resize-handle"
             style={{
               position: 'absolute',
-              left: element.size.width - 6,
-              top: element.size.height - 6,
+              left: 'calc(100% - 6px)',
+              top: 'calc(100% - 6px)',
               cursor: 'nw-resize',
               transform: `rotate(${-element.rotation}deg)`
             }}
