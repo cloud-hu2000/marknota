@@ -31,18 +31,31 @@ VITE_SERVER_URL=https://your-server.onrender.com
 
 ### 3. 部署前端到 Vercel
 
-```bash
-# 进入客户端目录
-cd client
+#### 方法一：使用 Vercel CLI (推荐)
 
-# 安装 Vercel CLI (如果还没有安装)
+```bash
+# 在项目根目录运行 (不要进入 client 目录)
 npm install -g vercel
 
-# 部署到 Vercel
-vercel --prod
+# 登录 Vercel
+vercel login
 
-# 或者通过 Vercel 网页界面部署
+# 部署项目 (会自动检测根目录的 vercel.json)
+vercel --prod
 ```
+
+#### 方法二：通过 GitHub 集成
+
+1. 在 [Vercel](https://vercel.com) 控制台连接你的 GitHub 仓库
+2. Vercel 会自动检测项目根目录的 `vercel.json` 配置
+3. 设置环境变量 `VITE_SERVER_URL`
+
+#### 重要配置说明
+
+- **Root Directory**: 保持为空（项目根目录）
+- **Build Command**: 自动检测（来自 `client/package.json`）
+- **Output Directory**: 自动设置为 `client/dist`
+- **环境变量**: `VITE_SERVER_URL=https://your-server.onrender.com`
 
 ### 4. 更新服务器配置（可选）
 
