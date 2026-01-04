@@ -60,10 +60,9 @@ vercel --prod
 #### 故障排除
 
 **如果遇到权限错误 (Permission denied)**:
-- 确保使用最新的代码版本（已修复权限问题）
-- 如果仍有问题，在 Vercel 项目设置中添加：
-  - **Install Command**: `npm install`
-  - **Build Command**: `cd client && npm run build`
+- 确保使用最新的代码版本（已实现跨平台权限修复）
+- 构建脚本会自动设置必要的执行权限
+- 如果仍有问题，确保你的代码是最新的（包含 `fix-permissions.cjs` 文件）
 
 **如果遇到 TypeScript 编译错误**:
 - 确保使用最新的代码版本（已修复所有类型错误）
