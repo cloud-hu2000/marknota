@@ -27,7 +27,7 @@ export const useWebSocket = ({ roomId = '', onStateUpdate, onOperation }: UseWeb
 
     // 连接到WebSocket服务器
     const socket = io(wsUrl, {
-      transports: ['websocket', 'polling'],
+      transports: ['polling', 'websocket'], // 优先使用轮询，与服务器配置匹配
       forceNew: true,
       timeout: 20000,
       reconnection: true,
