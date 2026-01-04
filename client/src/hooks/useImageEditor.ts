@@ -83,9 +83,9 @@ export const useImageEditor = ({ element, onLocalUpdate, onRealtimeUpdate, onFin
   }, []);
 
   // 使用节流来限制更新频率，避免过度更新
-  const throttledUpdateRef = React.useRef<NodeJS.Timeout | null>(null);
+  const throttledUpdateRef = React.useRef<number | null>(null);
   // 实时更新的节流定时器
-  const realtimeUpdateRef = React.useRef<NodeJS.Timeout | null>(null);
+  const realtimeUpdateRef = React.useRef<number | null>(null);
 
   // 鼠标移动处理
   const handleMouseMove = useCallback((e: MouseEvent) => {

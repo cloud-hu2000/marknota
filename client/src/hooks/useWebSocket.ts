@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { WhiteboardState, Operation, RoomData } from '../types';
+import { SERVER_URL } from '../config';
 
 interface UseWebSocketProps {
   roomId: string;
@@ -8,7 +9,7 @@ interface UseWebSocketProps {
   onOperation?: (operation: Operation) => void;
 }
 
-export const useWebSocket = ({ roomId, onStateUpdate, onOperation }: UseWebSocketProps = { roomId: '' }) => {
+export const useWebSocket = ({ roomId = '', onStateUpdate, onOperation }: UseWebSocketProps) => {
   const [isConnected, setIsConnected] = useState(false);
   const [socketId, setSocketId] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
@@ -20,12 +21,8 @@ export const useWebSocket = ({ roomId, onStateUpdate, onOperation }: UseWebSocke
   }, [onStateUpdate, onOperation]);
 
   useEffect(() => {
-    // 动态获取WebSocket服务器地址
-    // 如果是从localhost访问，则连接localhost:3004
-    // 如果是从内网IP访问，则连接相应的IP:3004
-    const currentHost = window.location.hostname;
-    const wsUrl = `http://${currentHost}:3004`;
-
+    // 使用配置的服务器URL
+    const wsUrl = SERVER_URL;
     console.log(`连接到WebSocket服务器: ${wsUrl}`);
 
     // 连接到WebSocket服务器
