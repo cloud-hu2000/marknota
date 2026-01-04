@@ -53,9 +53,16 @@ vercel --prod
 #### 重要配置说明
 
 - **Root Directory**: 保持为空（项目根目录）
-- **Build Command**: 自动检测（来自 `client/package.json`）
-- **Output Directory**: 自动设置为 `client/dist`
+- **Build Command**: `cd client && npm run build`（在 vercel.json 中配置）
+- **Output Directory**: `client/dist`（在 vercel.json 中配置）
 - **环境变量**: `VITE_SERVER_URL=https://your-server.onrender.com`
+
+#### 手动配置（如果自动配置失败）
+
+如果 vercel.json 配置仍有问题，在 Vercel 项目设置中手动设置：
+- **Root Directory**: （留空）
+- **Build Command**: `cd client && npm run build`
+- **Output Directory**: `client/dist`
 
 #### 故障排除
 
