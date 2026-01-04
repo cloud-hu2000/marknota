@@ -42,7 +42,7 @@ export const useWebSocket = ({ roomId = '', onStateUpdate, onOperation }: UseWeb
     socket.on('connect', () => {
       console.log('Connected to server');
       setIsConnected(true);
-      setSocketId(socket.id);
+      setSocketId(socket.id || null);
 
       // 加入房间
       socket.emit('join-room', roomId);
