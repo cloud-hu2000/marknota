@@ -65,6 +65,13 @@ vercel --prod
   - **Install Command**: `npm install`
   - **Build Command**: `cd client && npm run build`
 
+**如果遇到 TypeScript 编译错误**:
+- 确保使用最新的代码版本（已修复所有类型错误）
+- 常见错误包括：
+  - `import.meta.env` 类型错误 → 已通过 `vite-env.d.ts` 解决
+  - `NodeJS.Timeout` 类型错误 → 已替换为浏览器兼容的 `number` 类型
+  - `socket.id` 类型错误 → 已添加 null 检查
+
 ### 4. 更新服务器配置（可选）
 
 如果你的服务器运行在不同端口，你可以在 `client/src/config.ts` 中修改默认配置。
