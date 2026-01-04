@@ -57,6 +57,14 @@ vercel --prod
 - **Output Directory**: 自动设置为 `client/dist`
 - **环境变量**: `VITE_SERVER_URL=https://your-server.onrender.com`
 
+#### 故障排除
+
+**如果遇到权限错误 (Permission denied)**:
+- 确保使用最新的代码版本（已修复权限问题）
+- 如果仍有问题，在 Vercel 项目设置中添加：
+  - **Install Command**: `npm install`
+  - **Build Command**: `cd client && npm run build`
+
 ### 4. 更新服务器配置（可选）
 
 如果你的服务器运行在不同端口，你可以在 `client/src/config.ts` 中修改默认配置。
