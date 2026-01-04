@@ -76,8 +76,9 @@ vercel --prod
 - 错误如 "functions should NOT have fewer than 1 properties" 已解决
 
 **如果遇到 Rollup 原生依赖错误**:
-- 确保使用最新的代码版本（已添加 Rollup 依赖修复脚本）
-- 错误如 "Cannot find module @rollup/rollup-linux-x64-gnu" 已解决
+- 确保使用最新的代码版本（已强制安装 Rollup 依赖和原生二进制文件）
+- 添加了 rollup 作为直接依赖和 @rollup/rollup-linux-x64-gnu 作为可选依赖
+- 构建脚本会自动尝试修复缺失的原生依赖
 
 **如果遇到 TypeScript 编译错误**:
 - 确保使用最新的代码版本（已修复所有类型错误）
