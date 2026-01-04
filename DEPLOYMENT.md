@@ -75,6 +75,10 @@ vercel --prod
 - 确保使用最新的代码版本（已修复 schema 验证问题）
 - 错误如 "functions should NOT have fewer than 1 properties" 已解决
 
+**如果遇到 Rollup 原生依赖错误**:
+- 确保使用最新的代码版本（已添加 Rollup 依赖修复脚本）
+- 错误如 "Cannot find module @rollup/rollup-linux-x64-gnu" 已解决
+
 **如果遇到 TypeScript 编译错误**:
 - 确保使用最新的代码版本（已修复所有类型错误）
 - 常见错误包括：
