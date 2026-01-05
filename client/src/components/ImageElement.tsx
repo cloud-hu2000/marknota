@@ -21,6 +21,7 @@ export const ImageElement: React.FC<ImageEditorProps> = ({
   const { isDragging, handleMouseDown, startDragging } = useImageEditor({
     element,
     onLocalUpdate,
+    onRealtimeUpdate,
     onFinalUpdate,
     canvasRef,
     canvasTransform
