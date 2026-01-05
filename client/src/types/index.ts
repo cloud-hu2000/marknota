@@ -65,3 +65,56 @@ export interface ImageEditorProps {
   canvasRef: React.RefObject<HTMLDivElement>;
   canvasScale?: number;
 }
+
+// 用户相关类型
+export interface User {
+  id: string;
+  email: string;
+  username: string;
+  avatar?: string;
+  emailVerified: boolean;
+  mCoins: number;
+  createdAt: string;
+}
+
+export interface AuthState {
+  user: User | null;
+  token: string | null;
+  isLoading: boolean;
+  isAuthenticated: boolean;
+}
+
+export interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+export interface RegisterData {
+  email: string;
+  username: string;
+  password: string;
+}
+
+export interface CoinTransaction {
+  id: string;
+  type: 'earn' | 'spend';
+  amount: number;
+  reason: string;
+  description?: string;
+  createdAt: string;
+}
+
+export interface CoinBalance {
+  balance: number;
+  transactions: CoinTransaction[];
+}
+
+export interface SignInStatus {
+  signedInToday: boolean;
+  consecutiveDays: number;
+  recentSignIns: Array<{
+    date: string;
+    mCoins: number;
+  }>;
+  tomorrowReward: number;
+}
