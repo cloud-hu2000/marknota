@@ -6,11 +6,13 @@ export const ImageElement: React.FC<ImageEditorProps> = ({
   element,
   isSelected,
   onLocalUpdate,
+  onRealtimeUpdate,
   onFinalUpdate,
   onDelete,
   onCropStart: _onCropStart,
   onSelect,
-  canvasRef
+  canvasRef,
+  canvasTransform
 }) => {
   const elementRef = useRef<HTMLDivElement>(null);
   const mouseDownPos = useRef<{ x: number; y: number } | null>(null);
@@ -20,7 +22,8 @@ export const ImageElement: React.FC<ImageEditorProps> = ({
     element,
     onLocalUpdate,
     onFinalUpdate,
-    canvasRef
+    canvasRef,
+    canvasTransform
   });
 
   const handleMouseDownCustom = (e: React.MouseEvent) => {
@@ -61,16 +64,27 @@ export const ImageElement: React.FC<ImageEditorProps> = ({
     }
   };
 
+  // 计算变换后的位置
+  const transform = canvasTransform ? {
+    x: element.position.x * canvasTransform.zoom + canvasTransform.panOffset.x,
+    y: element.position.y * canvasTransform.zoom + canvasTransform.panOffset.y,
+    scale: canvasTransform.zoom
+  } : {
+    x: element.position.x,
+    y: element.position.y,
+    scale: 1
+  };
+
   return (
     <div
       ref={elementRef}
       className={`image-element ${isSelected ? 'selected' : ''} ${isDragging ? 'dragging' : ''}`}
       style={{
         position: 'absolute',
-        left: `${element.position.x}%`,
-        top: `${element.position.y}%`,
-        width: `${element.size.width}%`,
-        height: `${element.size.height}%`,
+        left: `${transform.x}px`,
+        top: `${transform.y}px`,
+        width: `${element.size.width * transform.scale}px`,
+        height: `${element.size.height * transform.scale}px`,
         transform: `rotate(${element.rotation}deg)`,
         zIndex: element.zIndex,
         cursor: isDragging ? 'grabbing' : 'grab'
