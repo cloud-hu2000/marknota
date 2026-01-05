@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "chmod +x node_modules/.bin/tsc && chmod +x node_modules/.bin/vite && npx tsc && npx vite build",
+    "build": "node -e \"if(process.platform!=='win32'){require('child_process').execSync('chmod +x node_modules/.bin/tsc node_modules/.bin/vite')}else{console.log('Skipping chmod on Windows')}\" && npx tsc && npx vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "postinstall": "node ./fix-permissions.cjs || true"
