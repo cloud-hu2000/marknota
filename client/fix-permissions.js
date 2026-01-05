@@ -35,3 +35,4 @@ binaries.forEach(binary => {
 });
 
 console.log('Permission fix completed');
+
