@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { CoinBalance, SignInStatus } from '../../types';
+import { CoinBalance, SignInStatus, CoinTransaction } from '../../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3004';
 
@@ -157,7 +157,7 @@ export const CoinDisplay: React.FC = () => {
             <div className="recent-transactions">
               <h4>最近交易</h4>
               <div className="transaction-list">
-                {balance.transactions.map((transaction) => (
+                {balance.transactions.map((transaction: CoinTransaction) => (
                   <div key={transaction.id} className="transaction-item">
                     <div className="transaction-info">
                       <span className="transaction-description">
