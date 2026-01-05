@@ -7,9 +7,13 @@ interface UseImageEditorProps {
   onRealtimeUpdate?: (updates: Partial<ImageElement>) => void; // 实时更新到服务器用于持久化
   onFinalUpdate: (updates: Partial<ImageElement>) => void; // 最终更新到服务器（鼠标释放时）
   canvasRef: React.RefObject<HTMLDivElement>;
+  canvasTransform?: {
+    panOffset: { x: number; y: number };
+    zoom: number;
+  };
 }
 
-export const useImageEditor = ({ element, onLocalUpdate, onRealtimeUpdate, onFinalUpdate, canvasRef }: UseImageEditorProps) => {
+export const useImageEditor = ({ element, onLocalUpdate, onRealtimeUpdate, onFinalUpdate, canvasRef, canvasTransform }: UseImageEditorProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [isRotating, setIsRotating] = useState(false);
@@ -31,26 +35,22 @@ export const useImageEditor = ({ element, onLocalUpdate, onRealtimeUpdate, onFin
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return;
 
-    const scaleAttr = (canvasRef.current as HTMLElement)?.dataset?.scale;
-    const scale = scaleAttr ? (parseFloat(scaleAttr) || 1) : 1;
+    // 获取画布变换信息
+    const zoom = canvasTransform?.zoom || 1;
+    const panOffset = canvasTransform?.panOffset || { x: 0, y: 0 };
 
-    // 将屏幕坐标 (clientX/clientY) 转换为未缩放的画布坐标（像素）
-    const mouseX = (e.clientX - rect.left) / scale;
-    const mouseY = (e.clientY - rect.top) / scale;
-
-    // 画布未缩放的像素尺寸
-    const unscaledCanvasWidth = rect.width / scale;
-    const unscaledCanvasHeight = rect.height / scale;
+    // 将屏幕坐标转换为画布坐标（考虑缩放和平移）
+    const mouseX = (e.clientX - rect.left) / zoom - panOffset.x;
+    const mouseY = (e.clientY - rect.top) / zoom - panOffset.y;
 
     switch (type) {
       case 'drag': {
-        // 把 element.position 从百分比转换为像素
-        const elPosX = (element.position.x / 100) * unscaledCanvasWidth;
-        const elPosY = (element.position.y / 100) * unscaledCanvasHeight;
-        // 不再立即设置拖拽状态，等待外部确认
+        // 计算鼠标相对于元素位置的偏移（在画布坐标系中）
+        // mouseX/mouseY 已经是画布坐标
+        // 元素位置也是画布坐标
         setDragStart({
-          x: mouseX - elPosX,
-          y: mouseY - elPosY
+          x: mouseX - element.position.x,
+          y: mouseY - element.position.y
         });
         break;
       }
@@ -61,10 +61,9 @@ export const useImageEditor = ({ element, onLocalUpdate, onRealtimeUpdate, onFin
           width: element.size.width,
           height: element.size.height
         });
-        // 记录元素中心并把鼠标位置转换到元素的本地（去旋转）坐标系，便于旋转情况下按角点缩放
-        // 计算元素中心（像素）
-        const elCenterX = ((element.position.x + element.size.width / 2) / 100) * unscaledCanvasWidth;
-        const elCenterY = ((element.position.y + element.size.height / 2) / 100) * unscaledCanvasHeight;
+        // 记录元素中心（屏幕坐标，考虑缩放）
+        const elCenterX = (element.position.x + element.size.width / 2 + panOffset.x) * zoom;
+        const elCenterY = (element.position.y + element.size.height / 2 + panOffset.y) * zoom;
         setResizeCenter({ x: elCenterX, y: elCenterY });
 
         const angleRad = (element.rotation || 0) * (Math.PI / 180);
@@ -83,8 +82,8 @@ export const useImageEditor = ({ element, onLocalUpdate, onRealtimeUpdate, onFin
 
       case 'rotate': {
         setIsRotating(true);
-        const rotateCenterX = ((element.position.x + element.size.width / 2) / 100) * unscaledCanvasWidth;
-        const rotateCenterY = ((element.position.y + element.size.height / 2) / 100) * unscaledCanvasHeight;
+        const rotateCenterX = (element.position.x + element.size.width / 2 + panOffset.x) * zoom;
+        const rotateCenterY = (element.position.y + element.size.height / 2 + panOffset.y) * zoom;
         setRotateStart(getAngle(mouseX, mouseY, rotateCenterX, rotateCenterY) - element.rotation);
         break;
       }
@@ -106,12 +105,13 @@ export const useImageEditor = ({ element, onLocalUpdate, onRealtimeUpdate, onFin
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return;
 
-    const scaleAttr = (canvasRef.current as HTMLElement)?.dataset?.scale;
-    const scale = scaleAttr ? (parseFloat(scaleAttr) || 1) : 1;
+    // 获取画布变换信息
+    const zoom = canvasTransform?.zoom || 1;
+    const panOffset = canvasTransform?.panOffset || { x: 0, y: 0 };
 
-    // 将屏幕坐标转换为未缩放的画布坐标
-    const mouseX = (e.clientX - rect.left) / scale;
-    const mouseY = (e.clientY - rect.top) / scale;
+    // 将屏幕坐标转换为画布坐标（考虑缩放和平移）
+    const mouseX = (e.clientX - rect.left) / zoom - panOffset.x;
+    const mouseY = (e.clientY - rect.top) / zoom - panOffset.y;
 
     // 使用节流来限制更新频率，每16ms最多更新一次（约60fps）
     if (throttledUpdateRef.current) return;
@@ -122,16 +122,14 @@ export const useImageEditor = ({ element, onLocalUpdate, onRealtimeUpdate, onFin
       let updates: Partial<ImageElement> | null = null;
 
       if (isDragging) {
-        const unscaledCanvasWidth = rect.width / scale;
-        const unscaledCanvasHeight = rect.height / scale;
-
-        const pxX = mouseX - dragStart.x;
-        const pxY = mouseY - dragStart.y;
+        // 在画布坐标系中计算新的元素位置
+        const newPosX = mouseX - dragStart.x;
+        const newPosY = mouseY - dragStart.y;
 
         updates = {
           position: {
-            x: (pxX / unscaledCanvasWidth) * 100,
-            y: (pxY / unscaledCanvasHeight) * 100
+            x: newPosX,
+            y: newPosY
           }
         };
       } else if (isResizing) {
@@ -158,19 +156,20 @@ export const useImageEditor = ({ element, onLocalUpdate, onRealtimeUpdate, onFin
         const newPosXPx = centerX - newWidthPx / 2;
         const newPosYPx = centerY - newHeightPx / 2;
 
-        const unscaledCanvasWidth = rect.width / scale;
-        const unscaledCanvasHeight = rect.height / scale;
+        // 将屏幕坐标转换回原始存储坐标
+        const originalPosX = newPosXPx / zoom - panOffset.x;
+        const originalPosY = newPosYPx / zoom - panOffset.y;
+        const originalWidth = newWidthPx / zoom;
+        const originalHeight = newHeightPx / zoom;
 
         updates = {
-          size: { width: (newWidthPx / unscaledCanvasWidth) * 100, height: (newHeightPx / unscaledCanvasHeight) * 100 },
-          position: { x: (newPosXPx / unscaledCanvasWidth) * 100, y: (newPosYPx / unscaledCanvasHeight) * 100 }
+          size: { width: originalWidth, height: originalHeight },
+          position: { x: originalPosX, y: originalPosY }
         };
       } else if (isRotating) {
-        // element.position/size 存为百分比，先转换为像素中心点再计算角度
-        const unscaledCanvasWidth = rect.width / scale;
-        const unscaledCanvasHeight = rect.height / scale;
-        const centerXPx = ((element.position.x + element.size.width / 2) / 100) * unscaledCanvasWidth;
-        const centerYPx = ((element.position.y + element.size.height / 2) / 100) * unscaledCanvasHeight;
+        // 计算元素中心在屏幕上的位置（考虑缩放和平移）
+        const centerXPx = (element.position.x + element.size.width / 2 + panOffset.x) * zoom;
+        const centerYPx = (element.position.y + element.size.height / 2 + panOffset.y) * zoom;
         const currentAngle = getAngle(mouseX, mouseY, centerXPx, centerYPx);
 
         updates = {
@@ -179,31 +178,25 @@ export const useImageEditor = ({ element, onLocalUpdate, onRealtimeUpdate, onFin
       }
 
       if (updates) {
-        // 限制最小像素尺寸（与之前逻辑保持一致），转换为百分比
+        // 限制最小像素尺寸
         const minPx = 25;
-        const unscaledCanvasWidth = rect.width / scale;
-        const unscaledCanvasHeight = rect.height / scale;
-        const minWidthPercent = (minPx / unscaledCanvasWidth) * 100;
-        const minHeightPercent = (minPx / unscaledCanvasHeight) * 100;
 
-        // 先计算合并后的 candidate position/size（百分比），使用现有 element 做缺省值
+        // 先计算合并后的 candidate position/size（像素），使用现有 element 做缺省值
         const candidatePosX = updates.position?.x ?? element.position.x;
         const candidatePosY = updates.position?.y ?? element.position.y;
         const candidateW = updates.size?.width ?? element.size.width;
         const candidateH = updates.size?.height ?? element.size.height;
 
-        // 确保尺寸不小于最小百分比
-        const clampedW = Math.max(candidateW, minWidthPercent);
-        const clampedH = Math.max(candidateH, minHeightPercent);
+        // 确保尺寸不小于最小像素值
+        const clampedW = Math.max(candidateW, minPx);
+        const clampedH = Math.max(candidateH, minPx);
 
-        // 确保位置在 [0, 100 - size]
-        const clampedX = Math.min(Math.max(candidatePosX, 0), Math.max(0, 100 - clampedW));
-        const clampedY = Math.min(Math.max(candidatePosY, 0), Math.max(0, 100 - clampedH));
+        // 允许图片自由移动到画布任何位置，无边界限制
 
-        // 覆盖 updates 的值为受限后的百分比
+        // 覆盖 updates 的值为受限后的像素值（只限制最小尺寸，不限制位置）
         updates = {
           ...updates,
-          position: { x: clampedX, y: clampedY },
+          position: { x: candidatePosX, y: candidatePosY },
           size: { width: clampedW, height: clampedH },
         };
 
@@ -220,7 +213,7 @@ export const useImageEditor = ({ element, onLocalUpdate, onRealtimeUpdate, onFin
         }
       }
     }, 16); // 约60fps
-  }, [isDragging, isResizing, isRotating, dragStart, resizeStart, rotateStart, element, onLocalUpdate, onRealtimeUpdate, canvasRef, getAngle]);
+  }, [isDragging, isResizing, isRotating, dragStart, resizeStart, rotateStart, element, onLocalUpdate, onRealtimeUpdate, canvasRef, canvasTransform, getAngle]);
 
   // 结束操作
   const handleMouseUp = useCallback(() => {

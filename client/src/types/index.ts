@@ -64,6 +64,10 @@ export interface ImageEditorProps {
   onSelect: () => void;
   canvasRef: React.RefObject<HTMLDivElement>;
   canvasScale?: number;
+  canvasTransform?: {
+    panOffset: { x: number; y: number };
+    zoom: number;
+  };
 }
 
 // 用户相关类型
