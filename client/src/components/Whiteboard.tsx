@@ -21,6 +21,9 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ roomId, initialState }) 
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
+  // 存储上一次的缩放值，用于检测缩放变化
+  const prevZoomRef = useRef(1.0);
+
   console.log('Whiteboard rendered, state:', state);
 
   // 处理接收到的操作
@@ -159,6 +162,26 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ roomId, initialState }) 
       // 状态同步将通过正常的WebSocket重连机制处理
     }
   }, [needsStateSync, isConnected]);
+
+  // 当画布缩放变化时，不修改图片元素的逻辑坐标和尺寸
+  // 图片的视觉大小由ImageElement组件中的canvasTransform.zoom决定
+  // 这样可以避免画布缩放影响图片的缩放功能计算
+  React.useEffect(() => {
+    const prevZoom = prevZoomRef.current;
+    if (zoom !== prevZoom) {
+      console.log('画布缩放变化，保持图片逻辑尺寸不变:', {
+        prevZoom,
+        newZoom: zoom,
+        elementCount: state.elements.length
+      });
+
+      // 画布缩放时不再修改图片的逻辑坐标和尺寸
+      // 图片的视觉显示将通过ImageElement组件中的canvasTransform自动调整
+    }
+
+    // 更新上一次的缩放值
+    prevZoomRef.current = zoom;
+  }, [zoom]);
 
   // 本地更新元素（用于拖动过程中的实时反馈）
   const updateElementLocal = useCallback((elementId: string, updates: Partial<ImageElement>) => {
@@ -507,7 +530,7 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ roomId, initialState }) 
           flex: 1;
           position: relative;
           background: white;
-          overflow: visible;
+          overflow: hidden;
           width: 100%;
           height: 100%;
         }
