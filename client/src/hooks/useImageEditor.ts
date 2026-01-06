@@ -25,6 +25,12 @@ export const useImageEditor = ({ element, onLocalUpdate, onRealtimeUpdate, onFin
   // 存储拖拽开始时的画布变换状态，用于在缩放过程中保持拖拽的一致性
   const [dragStartTransform, setDragStartTransform] = useState<{ zoom: number; panOffset: { x: number; y: number } } | null>(null);
 
+  // 存储缩放开始时的画布变换状态，用于在缩放过程中保持缩放操作的一致性
+  const [resizeStartTransform, setResizeStartTransform] = useState<{ zoom: number; panOffset: { x: number; y: number } } | null>(null);
+
+  // 存储旋转开始时的画布变换状态，用于在缩放过程中保持旋转操作的一致性
+  const [rotateStartTransform, setRotateStartTransform] = useState<{ zoom: number; panOffset: { x: number; y: number } } | null>(null);
+
   // 计算鼠标相对于元素中心的角度
   const getAngle = useCallback((mouseX: number, mouseY: number, centerX: number, centerY: number) => {
     return Math.atan2(mouseY - centerY, mouseX - centerX) * (180 / Math.PI);
@@ -43,8 +49,9 @@ export const useImageEditor = ({ element, onLocalUpdate, onRealtimeUpdate, onFin
     const panOffset = canvasTransform?.panOffset || { x: 0, y: 0 };
 
     // 将屏幕坐标转换为画布坐标（考虑缩放和平移）
-    const mouseX = (e.clientX - rect.left) / zoom - panOffset.x;
-    const mouseY = (e.clientY - rect.top) / zoom - panOffset.y;
+    // 修正坐标转换：先减去panOffset的缩放贡献，再除以zoom
+    const mouseX = (e.clientX - rect.left - panOffset.x * zoom) / zoom;
+    const mouseY = (e.clientY - rect.top - panOffset.y * zoom) / zoom;
 
     switch (type) {
       case 'drag': {
@@ -69,6 +76,11 @@ export const useImageEditor = ({ element, onLocalUpdate, onRealtimeUpdate, onFin
           width: element.size.width,
           height: element.size.height
         });
+        // 保存缩放开始时的画布变换状态，用于在缩放过程中保持缩放操作的一致性
+        setResizeStartTransform({
+          zoom: zoom,
+          panOffset: { ...panOffset }
+        });
         // 记录元素中心（屏幕坐标，考虑缩放）
         const elCenterX = (element.position.x + element.size.width / 2 + panOffset.x) * zoom;
         const elCenterY = (element.position.y + element.size.height / 2 + panOffset.y) * zoom;
@@ -90,6 +102,11 @@ export const useImageEditor = ({ element, onLocalUpdate, onRealtimeUpdate, onFin
 
       case 'rotate': {
         setIsRotating(true);
+        // 保存旋转开始时的画布变换状态，用于在缩放过程中保持旋转操作的一致性
+        setRotateStartTransform({
+          zoom: zoom,
+          panOffset: { ...panOffset }
+        });
         const rotateCenterX = (element.position.x + element.size.width / 2 + panOffset.x) * zoom;
         const rotateCenterY = (element.position.y + element.size.height / 2 + panOffset.y) * zoom;
         setRotateStart(getAngle(mouseX, mouseY, rotateCenterX, rotateCenterY) - element.rotation);
@@ -118,8 +135,8 @@ export const useImageEditor = ({ element, onLocalUpdate, onRealtimeUpdate, onFin
     const panOffset = canvasTransform?.panOffset || { x: 0, y: 0 };
 
     // 将屏幕坐标转换为画布坐标（考虑缩放和平移）
-    const mouseX = (e.clientX - rect.left) / zoom - panOffset.x;
-    const mouseY = (e.clientY - rect.top) / zoom - panOffset.y;
+    const mouseX = (e.clientX - rect.left - panOffset.x * zoom) / zoom;
+    const mouseY = (e.clientY - rect.top - panOffset.y * zoom) / zoom;
 
     // 使用节流来限制更新频率，每16ms最多更新一次（约60fps）
     if (throttledUpdateRef.current) return;
@@ -139,8 +156,8 @@ export const useImageEditor = ({ element, onLocalUpdate, onRealtimeUpdate, onFin
 
           // 如果画布变换发生了变化，立即重新计算dragStart
           if (currentZoom !== startZoom || currentPanOffset.x !== startPanOffset.x || currentPanOffset.y !== startPanOffset.y) {
-            // 直接基于当前鼠标位置和元素当前位置重新计算dragStart
-            // 这样可以立即适应新的坐标变换规则
+            // 基于当前鼠标位置和元素当前位置重新计算dragStart
+            // 确保在同一坐标系中进行计算
             setDragStart({
               x: mouseX - element.position.x,
               y: mouseY - element.position.y
@@ -155,6 +172,8 @@ export const useImageEditor = ({ element, onLocalUpdate, onRealtimeUpdate, onFin
             console.log('画布缩放已更新拖拽计算规则', {
               oldZoom: startZoom,
               newZoom: currentZoom,
+              mousePos: { x: mouseX, y: mouseY },
+              elementPos: element.position,
               newDragStart: { x: mouseX - element.position.x, y: mouseY - element.position.y }
             });
           }
@@ -171,17 +190,59 @@ export const useImageEditor = ({ element, onLocalUpdate, onRealtimeUpdate, onFin
           }
         };
       } else if (isResizing) {
-        // 在元素本地（去旋转）坐标系中计算新的半宽半高，使得对应角点与鼠标对齐，
-        // 并保持元素中心不变（这样旋转情况下角点会跟随鼠标）
+        // 检查画布变换是否发生了变化，如果是则重新计算所有相关参数
+        if (resizeStartTransform) {
+          const currentZoom = canvasTransform?.zoom || 1;
+          const currentPanOffset = canvasTransform?.panOffset || { x: 0, y: 0 };
+          const startZoom = resizeStartTransform.zoom;
+          const startPanOffset = resizeStartTransform.panOffset;
+
+          // 如果画布变换发生了变化，重新计算所有参数
+          if (currentZoom !== startZoom || currentPanOffset.x !== startPanOffset.x || currentPanOffset.y !== startPanOffset.y) {
+            // 重新计算元素中心在屏幕坐标系中的位置
+            const newElCenterX = (element.position.x + element.size.width / 2) * currentZoom + currentPanOffset.x * currentZoom + rect.left;
+            const newElCenterY = (element.position.y + element.size.height / 2) * currentZoom + currentPanOffset.y * currentZoom + rect.top;
+            setResizeCenter({ x: newElCenterX, y: newElCenterY });
+
+            // 重新计算dragStart（相对于元素中心的偏移）
+            const angleRad = (element.rotation || 0) * (Math.PI / 180);
+            const cos = Math.cos(angleRad);
+            const sin = Math.sin(angleRad);
+
+            // 将鼠标位置转换到元素本地坐标系（去旋转）
+            const localX = (e.clientX - newElCenterX) * cos + (e.clientY - newElCenterY) * sin;
+            const localY = -(e.clientX - newElCenterX) * sin + (e.clientY - newElCenterY) * cos;
+
+            setDragStart({
+              x: localX,
+              y: localY
+            });
+
+            // 更新存储的变换状态
+            setResizeStartTransform({
+              zoom: currentZoom,
+              panOffset: { ...currentPanOffset }
+            });
+
+            console.log('画布缩放已更新缩放计算规则', {
+              oldZoom: startZoom,
+              newZoom: currentZoom,
+              newResizeCenter: { x: newElCenterX, y: newElCenterY },
+              newDragStart: { x: localX, y: localY }
+            });
+          }
+        }
+
+        // 使用屏幕坐标进行计算，保持与元素显示一致
         const centerX = resizeCenter.x;
         const centerY = resizeCenter.y;
         const angleRad = (element.rotation || 0) * (Math.PI / 180);
         const cos = Math.cos(angleRad);
         const sin = Math.sin(angleRad);
 
-        // 当前鼠标在元素本地坐标
-        const localX = (mouseX - centerX) * cos + (mouseY - centerY) * sin;
-        const localY = -(mouseX - centerX) * sin + (mouseY - centerY) * cos;
+        // 当前鼠标在元素本地坐标（去旋转）
+        const localX = (e.clientX - centerX) * cos + (e.clientY - centerY) * sin;
+        const localY = -(e.clientX - centerX) * sin + (e.clientY - centerY) * cos;
 
         // 以中心为参考，新的半宽半高由 localX/localY 的绝对值决定（像素）
         const newHalfWidth = Math.max(25, Math.abs(localX));
@@ -195,8 +256,8 @@ export const useImageEditor = ({ element, onLocalUpdate, onRealtimeUpdate, onFin
         const newPosYPx = centerY - newHeightPx / 2;
 
         // 将屏幕坐标转换回原始存储坐标
-        const originalPosX = newPosXPx / zoom - panOffset.x;
-        const originalPosY = newPosYPx / zoom - panOffset.y;
+        const originalPosX = (newPosXPx - rect.left) / zoom - panOffset.x;
+        const originalPosY = (newPosYPx - rect.top) / zoom - panOffset.y;
         const originalWidth = newWidthPx / zoom;
         const originalHeight = newHeightPx / zoom;
 
@@ -205,10 +266,39 @@ export const useImageEditor = ({ element, onLocalUpdate, onRealtimeUpdate, onFin
           position: { x: originalPosX, y: originalPosY }
         };
       } else if (isRotating) {
-        // 计算元素中心在屏幕上的位置（考虑缩放和平移）
-        const centerXPx = (element.position.x + element.size.width / 2 + panOffset.x) * zoom;
-        const centerYPx = (element.position.y + element.size.height / 2 + panOffset.y) * zoom;
-        const currentAngle = getAngle(mouseX, mouseY, centerXPx, centerYPx);
+        // 检查画布变换是否发生了变化，如果是则重新计算rotateStart
+        if (rotateStartTransform) {
+          const currentZoom = canvasTransform?.zoom || 1;
+          const currentPanOffset = canvasTransform?.panOffset || { x: 0, y: 0 };
+          const startZoom = rotateStartTransform.zoom;
+          const startPanOffset = rotateStartTransform.panOffset;
+
+          // 如果画布变换发生了变化，重新计算rotateStart
+          if (currentZoom !== startZoom || currentPanOffset.x !== startPanOffset.x || currentPanOffset.y !== startPanOffset.y) {
+            // 重新计算元素中心在屏幕坐标系中的位置
+            const newCenterXPx = (element.position.x + element.size.width / 2) * currentZoom + currentPanOffset.x * currentZoom + rect.left;
+            const newCenterYPx = (element.position.y + element.size.height / 2) * currentZoom + currentPanOffset.y * currentZoom + rect.top;
+            const newRotateStart = getAngle(e.clientX, e.clientY, newCenterXPx, newCenterYPx) - element.rotation;
+            setRotateStart(newRotateStart);
+
+            // 更新存储的变换状态
+            setRotateStartTransform({
+              zoom: currentZoom,
+              panOffset: { ...currentPanOffset }
+            });
+
+            console.log('画布缩放已更新旋转计算规则', {
+              oldZoom: startZoom,
+              newZoom: currentZoom,
+              newRotateStart: newRotateStart
+            });
+          }
+        }
+
+        // 计算元素中心在屏幕坐标系中的位置
+        const centerXPx = (element.position.x + element.size.width / 2) * zoom + panOffset.x * zoom + rect.left;
+        const centerYPx = (element.position.y + element.size.height / 2) * zoom + panOffset.y * zoom + rect.top;
+        const currentAngle = getAngle(e.clientX, e.clientY, centerXPx, centerYPx);
 
         updates = {
           rotation: currentAngle - rotateStart
@@ -277,6 +367,11 @@ export const useImageEditor = ({ element, onLocalUpdate, onRealtimeUpdate, onFin
     setIsDragging(false);
     setIsResizing(false);
     setIsRotating(false);
+
+    // 清除变换状态
+    setDragStartTransform(null);
+    setResizeStartTransform(null);
+    setRotateStartTransform(null);
   }, [isDragging, isResizing, isRotating, onFinalUpdate]);
 
   // 全局鼠标事件监听
