@@ -1,8 +1,18 @@
+// 加载环境变量 - 优先读取 .env.local，如果不存在则读取 .env
+require('dotenv').config({ path: '.env.local' });
+require('dotenv').config(); // 如果 .env.local 不存在，则读取 .env
+
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const cors = require('cors');
+const path = require('path');
 const roomManager = require('./rooms');
+
+// 路由
+const authRoutes = require('./routes/auth');
+const coinRoutes = require('./routes/coins');
+const uploadRoutes = require('./routes/upload');
 
 const app = express();
 const server = http.createServer(app);
@@ -57,6 +67,14 @@ const io = socketIo(server, {
 // 中间件
 app.use(cors());
 app.use(express.json());
+
+// 静态文件服务
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// API路由
+app.use('/api/auth', authRoutes);
+app.use('/api/coins', coinRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // 基础路由
 app.get('/', (req, res) => {
