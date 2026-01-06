@@ -17,6 +17,7 @@ export const ImageElement: React.FC<ImageEditorProps> = ({
   const elementRef = useRef<HTMLDivElement>(null);
   const mouseDownPos = useRef<{ x: number; y: number } | null>(null);
   const [hasDragged, setHasDragged] = React.useState(false);
+  const [imageDimensions, setImageDimensions] = React.useState<{ width: number; height: number } | null>(null);
 
   const { isDragging, handleMouseDown, startDragging } = useImageEditor({
     element,
@@ -26,6 +27,15 @@ export const ImageElement: React.FC<ImageEditorProps> = ({
     canvasRef,
     canvasTransform
   });
+
+  // 获取图片的实际尺寸
+  React.useEffect(() => {
+    const img = new Image();
+    img.onload = () => {
+      setImageDimensions({ width: img.naturalWidth, height: img.naturalHeight });
+    };
+    img.src = element.src;
+  }, [element.src]);
 
   const handleMouseDownCustom = (e: React.MouseEvent) => {
     // 记录鼠标按下位置
@@ -76,6 +86,35 @@ export const ImageElement: React.FC<ImageEditorProps> = ({
     scale: 1
   };
 
+  // 计算实际显示的图片尺寸（考虑 object-fit: contain）
+  const containerWidth = element.size.width * transform.scale;
+  const containerHeight = element.size.height * transform.scale;
+
+  // 计算图片在容器中的实际显示尺寸
+  let displayWidth = containerWidth;
+  let displayHeight = containerHeight;
+  let offsetX = 0;
+  let offsetY = 0;
+
+  if (imageDimensions) {
+    const containerAspectRatio = containerWidth / containerHeight;
+    const imageAspectRatio = imageDimensions.width / imageDimensions.height;
+
+    if (containerAspectRatio > imageAspectRatio) {
+      // 容器更宽，以高度为基准
+      displayHeight = containerHeight;
+      displayWidth = displayHeight * imageAspectRatio;
+      offsetX = (containerWidth - displayWidth) / 2;
+      offsetY = 0;
+    } else {
+      // 容器更高，以宽度为基准
+      displayWidth = containerWidth;
+      displayHeight = displayWidth / imageAspectRatio;
+      offsetX = 0;
+      offsetY = (containerHeight - displayHeight) / 2;
+    }
+  }
+
   return (
     <div
       ref={elementRef}
@@ -110,16 +149,24 @@ export const ImageElement: React.FC<ImageEditorProps> = ({
 
       {isSelected && (
         <>
-          {/* 选择边框 */}
-          <div className="selection-border" />
+          {/* 选择边框 - 紧贴实际图片尺寸 */}
+          <div
+            className="selection-border"
+            style={{
+              top: `${offsetY}px`,
+              left: `${offsetX}px`,
+              width: `${displayWidth}px`,
+              height: `${displayHeight}px`
+            }}
+          />
 
-          {/* 控制点 - 固定在图片右下角 */}
+          {/* 控制点 - 紧贴实际图片右下角 */}
           <div
             className="control-point resize-handle"
             style={{
               position: 'absolute',
-              left: 'calc(100% - 6px)',
-              top: 'calc(100% - 6px)',
+              left: `${displayWidth + offsetX - 6}px`,
+              top: `${displayHeight + offsetY - 6}px`,
               cursor: 'nw-resize',
               transform: `rotate(${-element.rotation}deg)`
             }}
@@ -146,8 +193,9 @@ export const ImageElement: React.FC<ImageEditorProps> = ({
           transition: box-shadow 0.2s ease;
         }
 
+        /* 移除 container 的 box-shadow，使用内部 .selection-border 提供精确贴合的边框 */
         .image-element.selected {
-          box-shadow: 0 0 0 2px #007bff;
+          box-shadow: none;
         }
 
         .image-element.dragging {
@@ -156,12 +204,9 @@ export const ImageElement: React.FC<ImageEditorProps> = ({
 
         .selection-border {
           position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          box-shadow: 0 0 0 2px #007bff;
+          border: 2px solid #007bff;
           pointer-events: none;
+          box-sizing: border-box;
         }
 
         .control-point {
