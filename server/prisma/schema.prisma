@@ -1,0 +1,61 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 用户模型
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  username    String   @unique
+  password    String
+  avatar      String?  // 头像URL
+  emailVerified Boolean @default(false)
+  emailVerificationToken String? @unique
+  emailVerificationExpires DateTime?
+  resetPasswordToken String? @unique
+  resetPasswordExpires DateTime?
+  mCoins      Int      @default(0) // M币余额
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // 关联
+  dailySignIns DailySignIn[]
+  coinTransactions CoinTransaction[]
+
+  @@map("users")
+}
+
+// 每日签到记录
+model DailySignIn {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      DateTime @db.Date // 签到日期
+  mCoins    Int      // 当日获得的M币
+  createdAt DateTime @default(now())
+
+  @@unique([userId, date])
+  @@map("daily_sign_ins")
+}
+
+// M币交易记录
+model CoinTransaction {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        String   // 'earn' | 'spend'
+  amount      Int
+  reason      String   // 交易原因，如 'daily_sign_in', 'room_creation', 'premium_feature'
+  description String?  // 详细描述
+  createdAt   DateTime @default(now())
+
+  @@map("coin_transactions")
+}

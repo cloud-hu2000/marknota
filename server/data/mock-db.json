@@ -1,0 +1,51 @@
+{
+  "users": [
+    {
+      "id": "1767598003192",
+      "email": "test@example.com",
+      "username": "testuser",
+      "password": "$2b$12$sqTF7YG4k.cUZjF/2Oxh8u52J.fmC7DhC7l0LJrEYy1oKy4i98NYO",
+      "emailVerificationToken": "1ad4df65271d0a4c6d25806c11ef16b61e986a40819399258890bccdf3d3e0c9",
+      "emailVerificationExpires": "2026-01-06T07:26:43.192Z",
+      "mCoins": 10,
+      "emailVerified": false,
+      "avatar": null,
+      "createdAt": "2026-01-05T07:26:43.192Z",
+      "updatedAt": "2026-01-05T07:26:43.192Z"
+    },
+    {
+      "id": "1767598013555",
+      "email": "test2@example.com",
+      "username": "testuser2",
+      "password": "$2b$12$ML/5lim5X6zwEin2PMPaJeY8XWwnaEa.12/wnyqtpnfvhrfRQe6tG",
+      "emailVerificationToken": "3c079646befa1a5fd0627a4700406e351aae874630bbe62402e3f33ebd0cbdd4",
+      "emailVerificationExpires": "2026-01-06T07:26:53.555Z",
+      "mCoins": 10,
+      "emailVerified": false,
+      "avatar": null,
+      "createdAt": "2026-01-05T07:26:53.555Z",
+      "updatedAt": "2026-01-05T07:26:53.555Z"
+    }
+  ],
+  "coin_transactions": [
+    {
+      "id": "1767598003219",
+      "userId": "1767598003192",
+      "type": "earn",
+      "amount": 10,
+      "reason": "welcome_bonus",
+      "description": "新用户欢迎奖励",
+      "createdAt": "2026-01-05T07:26:43.219Z"
+    },
+    {
+      "id": "1767598013582",
+      "userId": "1767598013555",
+      "type": "earn",
+      "amount": 10,
+      "reason": "welcome_bonus",
+      "description": "新用户欢迎奖励",
+      "createdAt": "2026-01-05T07:26:53.582Z"
+    }
+  ],
+  "daily_sign_ins": []
+}
