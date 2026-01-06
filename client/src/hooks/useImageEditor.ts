@@ -22,6 +22,9 @@ export const useImageEditor = ({ element, onLocalUpdate, onRealtimeUpdate, onFin
   const [resizeCenter, setResizeCenter] = useState<Position>({ x: 0, y: 0 });
   const [rotateStart, setRotateStart] = useState(0);
 
+  // 存储拖拽开始时的画布变换状态，用于在缩放过程中保持拖拽的一致性
+  const [dragStartTransform, setDragStartTransform] = useState<{ zoom: number; panOffset: { x: number; y: number } } | null>(null);
+
   // 计算鼠标相对于元素中心的角度
   const getAngle = useCallback((mouseX: number, mouseY: number, centerX: number, centerY: number) => {
     return Math.atan2(mouseY - centerY, mouseX - centerX) * (180 / Math.PI);
@@ -51,6 +54,11 @@ export const useImageEditor = ({ element, onLocalUpdate, onRealtimeUpdate, onFin
         setDragStart({
           x: mouseX - element.position.x,
           y: mouseY - element.position.y
+        });
+        // 保存拖拽开始时的画布变换状态，用于在缩放过程中保持拖拽的一致性
+        setDragStartTransform({
+          zoom: zoom,
+          panOffset: { ...panOffset }
         });
         break;
       }
@@ -122,6 +130,36 @@ export const useImageEditor = ({ element, onLocalUpdate, onRealtimeUpdate, onFin
       let updates: Partial<ImageElement> | null = null;
 
       if (isDragging) {
+        // 检查画布变换是否发生了变化，如果是则重新计算dragStart
+        if (dragStartTransform) {
+          const currentZoom = canvasTransform?.zoom || 1;
+          const currentPanOffset = canvasTransform?.panOffset || { x: 0, y: 0 };
+          const startZoom = dragStartTransform.zoom;
+          const startPanOffset = dragStartTransform.panOffset;
+
+          // 如果画布变换发生了变化，立即重新计算dragStart
+          if (currentZoom !== startZoom || currentPanOffset.x !== startPanOffset.x || currentPanOffset.y !== startPanOffset.y) {
+            // 直接基于当前鼠标位置和元素当前位置重新计算dragStart
+            // 这样可以立即适应新的坐标变换规则
+            setDragStart({
+              x: mouseX - element.position.x,
+              y: mouseY - element.position.y
+            });
+
+            // 更新存储的变换状态
+            setDragStartTransform({
+              zoom: currentZoom,
+              panOffset: { ...currentPanOffset }
+            });
+
+            console.log('画布缩放已更新拖拽计算规则', {
+              oldZoom: startZoom,
+              newZoom: currentZoom,
+              newDragStart: { x: mouseX - element.position.x, y: mouseY - element.position.y }
+            });
+          }
+        }
+
         // 在画布坐标系中计算新的元素位置
         const newPosX = mouseX - dragStart.x;
         const newPosY = mouseY - dragStart.y;
